@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+*.md
+*.docx
+*.log
+.DS_Store
+.env
+.env.local
+.env.*.local
+*-firebase-adminsdk-*.json
+nixpacks.toml

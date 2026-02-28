@@ -6,6 +6,8 @@ import { ref, onValue, off, set as rtdbSet, push as rtdbPush } from 'firebase/da
 import { rtdb } from '@/lib/firebase/config'
 import { useControlRoomStore } from '@/stores/control-room-store'
 import { useAuthStore } from '@/stores/auth-store'
+import RiskScoreBadge from '@/components/control-room/RiskScoreBadge'
+import type { RiskLevel } from '@/types/risk'
 import type { Alert, AlertType, DashboardStats, AlertGroup, GeoLocation } from '@/types'
 
 // --- Audio alert utility ---
@@ -464,19 +466,28 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <p className="text-[13px] font-semibold text-slate-300">
-                      {new Date(alert.createdAt).toLocaleTimeString('en-GB', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false,
-                      })}
-                    </p>
-                    {alert.userName && (
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        {alert.userName}
-                      </p>
+                  <div className="flex items-center gap-3">
+                    {alert.riskScore != null && alert.riskLevel && (
+                      <RiskScoreBadge
+                        score={alert.riskScore}
+                        level={alert.riskLevel as RiskLevel}
+                        size="sm"
+                      />
                     )}
+                    <div className="text-right">
+                      <p className="text-[13px] font-semibold text-slate-300">
+                        {new Date(alert.createdAt).toLocaleTimeString('en-GB', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })}
+                      </p>
+                      {alert.userName && (
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {alert.userName}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

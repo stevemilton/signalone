@@ -6,6 +6,10 @@ import { ref, onValue, off, update } from 'firebase/database'
 import { rtdb } from '@/lib/firebase/config'
 import { useControlRoomStore } from '@/stores/control-room-store'
 import { useAuthStore } from '@/stores/auth-store'
+import { useRiskScore } from '@/hooks/useRiskScore'
+import RiskScoreBadge from '@/components/control-room/RiskScoreBadge'
+import RiskFactorsBreakdown from '@/components/control-room/RiskFactorsBreakdown'
+import NearbyIncidents from '@/components/control-room/NearbyIncidents'
 import type { Alert, RealtimeAlertState } from '@/types'
 
 export default function AlertReviewPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +23,16 @@ export default function AlertReviewPage({ params }: { params: Promise<{ id: stri
   const [accepting, setAccepting] = useState(false)
   const [markingUnavailable, setMarkingUnavailable] = useState(false)
   const [camerasInRange, setCamerasInRange] = useState(0)
+
+  // Risk score
+  const { data: riskData } = useRiskScore({
+    lat: alert?.location.lat,
+    lng: alert?.location.lng,
+    userId: alert?.userId,
+    alertType: alert?.alertType,
+    passengerFeelsSafe: alert?.passengerFeelsSafe,
+    enabled: !!alert,
+  })
 
   // Find alert from store
   useEffect(() => {
@@ -189,6 +203,30 @@ export default function AlertReviewPage({ params }: { params: Promise<{ id: stri
           </h1>
         </div>
       </div>
+
+      {/* Risk Intelligence */}
+      {riskData && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="flex items-center gap-4 rounded-2xl p-4 border" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+            <RiskScoreBadge score={riskData.score} level={riskData.level} size="lg" />
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Risk Score</p>
+              <p className="text-[13px] text-slate-300 mt-0.5">
+                {riskData.level === 'high' ? 'High risk — prioritise' :
+                 riskData.level === 'elevated' ? 'Elevated risk — increased attention' :
+                 riskData.level === 'moderate' ? 'Moderate risk' :
+                 'Low risk'}
+              </p>
+            </div>
+          </div>
+          <RiskFactorsBreakdown
+            factors={riskData.factors}
+            level={riskData.level}
+            falseAlarmProbability={riskData.falseAlarmProbability}
+          />
+          <NearbyIncidents incidents={riskData.nearbyIncidents} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: User Info + Actions */}

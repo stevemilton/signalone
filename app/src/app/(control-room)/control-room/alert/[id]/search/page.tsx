@@ -6,6 +6,8 @@ import { ref, update } from 'firebase/database'
 import { rtdb, auth as firebaseAuth } from '@/lib/firebase/config'
 import { useControlRoomStore } from '@/stores/control-room-store'
 import { useAuthStore } from '@/stores/auth-store'
+import { useRiskScore } from '@/hooks/useRiskScore'
+import RiskScoreBadge from '@/components/control-room/RiskScoreBadge'
 import type { Alert, Camera } from '@/types'
 
 interface NearbyCamera extends Camera {
@@ -29,6 +31,16 @@ export default function CCTVSearchPage({ params }: { params: Promise<{ id: strin
   const [locating, setLocating] = useState(false)
   const [searching, setSearching] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  // Risk score
+  const { data: riskData } = useRiskScore({
+    lat: alert?.location.lat,
+    lng: alert?.location.lng,
+    userId: alert?.userId,
+    alertType: alert?.alertType,
+    passengerFeelsSafe: alert?.passengerFeelsSafe,
+    enabled: !!alert,
+  })
 
   // Find alert from store
   useEffect(() => {
@@ -196,15 +208,22 @@ export default function CCTVSearchPage({ params }: { params: Promise<{ id: strin
         className="rounded-2xl p-4 mb-6 border"
         style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse-opacity" />
-          <p className="text-[13px] font-semibold text-slate-200">
-            Operator has accepted — scanning cameras
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse-opacity" />
+              <p className="text-[13px] font-semibold text-slate-200">
+                Operator has accepted — scanning cameras
+              </p>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1 ml-6">
+              Alert ID: {alertId.substring(0, 12)}... | {isRed ? 'RED' : 'BLUE'} Alert | {alert.locationName}
+            </p>
+          </div>
+          {riskData && (
+            <RiskScoreBadge score={riskData.score} level={riskData.level} size="sm" />
+          )}
         </div>
-        <p className="text-[11px] text-slate-400 mt-1 ml-6">
-          Alert ID: {alertId.substring(0, 12)}... | {isRed ? 'RED' : 'BLUE'} Alert | {alert.locationName}
-        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

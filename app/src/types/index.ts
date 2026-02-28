@@ -64,6 +64,10 @@ export interface Alert {
   incidentLog: IncidentLogEntry[]
   groupId: string | null
   duration: number | null
+  // Risk intelligence (populated by risk engine)
+  riskScore?: number
+  riskLevel?: 'low' | 'moderate' | 'elevated' | 'high'
+  riskFactors?: { name: string; score: number; weight: number }[]
 }
 
 export interface IncidentLogEntry {
@@ -237,3 +241,23 @@ export interface AlertGroup {
   createdAt: number
   status: 'active' | 'closed'
 }
+
+// --- Re-export Risk Types ---
+export type {
+  RiskLevel,
+  RiskFactor,
+  RiskScoreResponse,
+  RiskScoreParams,
+  NearbyIncident,
+  GeohashCell,
+  Hotspot,
+  UserRiskProfile,
+  UserRiskCategory,
+  RiskInsights,
+  RiskInsightsMetadata,
+  SpatialInsights,
+  TemporalInsights,
+  UserInsights,
+  FalseAlarmPatterns,
+  ComputeResponse,
+} from './risk'

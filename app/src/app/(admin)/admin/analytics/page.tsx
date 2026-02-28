@@ -3,6 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/shared/Button'
 import { Card } from '@/components/shared/Card'
+import { useRiskInsights } from '@/hooks/useRiskInsights'
+import RiskHeatmapGrid from '@/components/admin/RiskHeatmapGrid'
+import TemporalHeatmap from '@/components/admin/TemporalHeatmap'
+import HotspotTable from '@/components/admin/HotspotTable'
+import FalseAlarmPanel from '@/components/admin/FalseAlarmPanel'
 
 interface AnalyticsData {
   totalAlerts: number
@@ -94,6 +99,9 @@ export default function AnalyticsPage() {
     return d.toISOString().slice(0, 10)
   })
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10))
+
+  // Risk Intelligence
+  const riskInsights = useRiskInsights()
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true)
@@ -379,6 +387,120 @@ export default function AnalyticsPage() {
           </Card>
         </>
       )}
+
+      {/* Risk Intelligence Section */}
+      <div className="mt-8 pt-6 border-t border-gray-200">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Risk Intelligence</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Pattern analysis from {riskInsights.data?.metadata ? `${riskInsights.data.metadata.alertsAnalyzed} alerts` : 'alert history'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {riskInsights.data?.metadata && (
+              <span className="text-xs text-gray-400">
+                Last computed: {new Date(riskInsights.data.metadata.lastComputedAt).toLocaleString('en-GB')}
+              </span>
+            )}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={riskInsights.recompute}
+              loading={riskInsights.recomputing}
+            >
+              {riskInsights.recomputing ? 'Recomputing...' : 'Recompute Insights'}
+            </Button>
+          </div>
+        </div>
+
+        {riskInsights.error && (
+          <Card variant="danger">
+            <p className="text-sm text-red-700">{riskInsights.error}</p>
+          </Card>
+        )}
+
+        {riskInsights.loading && !riskInsights.data && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5 animate-pulse">
+                <div className="h-5 bg-gray-200 rounded w-40 mb-4" />
+                <div className="h-32 bg-gray-100 rounded" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {riskInsights.data && !riskInsights.data.computed && (
+          <Card>
+            <div className="text-center py-6">
+              <p className="text-gray-600">Risk insights have not been computed yet.</p>
+              <p className="text-sm text-gray-400 mt-1">Click &quot;Recompute Insights&quot; to analyse your alert data.</p>
+            </div>
+          </Card>
+        )}
+
+        {riskInsights.data?.computed && (
+          <div className="space-y-6">
+            {/* Row 1: Heatmap Grid + Hotspot Table */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {riskInsights.data.spatial && (
+                <RiskHeatmapGrid cells={riskInsights.data.spatial.cells} />
+              )}
+              {riskInsights.data.spatial && (
+                <HotspotTable hotspots={riskInsights.data.spatial.hotspots} />
+              )}
+            </div>
+
+            {/* Row 2: Temporal Heatmap */}
+            {riskInsights.data.temporal && (
+              <TemporalHeatmap
+                hourDayHeatmap={riskInsights.data.temporal.hourDayHeatmap}
+                hourlyProfile={riskInsights.data.temporal.hourlyProfile}
+                dayOfWeekProfile={riskInsights.data.temporal.dayOfWeekProfile}
+              />
+            )}
+
+            {/* Row 3: False Alarm Panel */}
+            {riskInsights.data.falseAlarmPatterns && (
+              <FalseAlarmPanel data={riskInsights.data.falseAlarmPatterns} />
+            )}
+
+            {/* Monthly Trends */}
+            {riskInsights.data.temporal?.monthlyTrends && riskInsights.data.temporal.monthlyTrends.length > 0 && (
+              <Card>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Monthly Trends</h2>
+                <div className="overflow-x-auto -mx-5 px-5">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 uppercase">Month</th>
+                        <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 uppercase">Alerts</th>
+                        <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 uppercase">Genuine Rate</th>
+                        <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 uppercase">Avg Response</th>
+                        <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 uppercase">Red Rate</th>
+                        <th className="text-left py-2 text-xs font-medium text-gray-500 uppercase">Escalation Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {riskInsights.data.temporal.monthlyTrends.map((trend) => (
+                        <tr key={trend.month} className="border-b border-gray-50">
+                          <td className="py-2.5 pr-4 font-medium text-gray-800">{trend.month}</td>
+                          <td className="py-2.5 pr-4 text-gray-600">{trend.alertCount}</td>
+                          <td className="py-2.5 pr-4 text-gray-600">{Math.round(trend.genuineRate * 100)}%</td>
+                          <td className="py-2.5 pr-4 text-gray-600">{trend.avgResponseTimeSec}s</td>
+                          <td className="py-2.5 pr-4 text-gray-600">{Math.round(trend.redAlertRate * 100)}%</td>
+                          <td className="py-2.5 text-gray-600">{Math.round(trend.escalationRate * 100)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

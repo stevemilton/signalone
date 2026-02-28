@@ -68,3 +68,111 @@ export function encodeGeohash(
 
   return hash
 }
+
+/**
+ * Decode a geohash string into a lat/lng center point.
+ */
+export function decodeGeohash(hash: string): { lat: number; lng: number } {
+  let latMin = -90,
+    latMax = 90
+  let lngMin = -180,
+    lngMax = 180
+  let isLng = true
+
+  for (const c of hash) {
+    const idx = BASE32.indexOf(c)
+    if (idx === -1) break
+    for (let bit = 4; bit >= 0; bit--) {
+      if (isLng) {
+        const mid = (lngMin + lngMax) / 2
+        if ((idx >> bit) & 1) {
+          lngMin = mid
+        } else {
+          lngMax = mid
+        }
+      } else {
+        const mid = (latMin + latMax) / 2
+        if ((idx >> bit) & 1) {
+          latMin = mid
+        } else {
+          latMax = mid
+        }
+      }
+      isLng = !isLng
+    }
+  }
+
+  return {
+    lat: (latMin + latMax) / 2,
+    lng: (lngMin + lngMax) / 2,
+  }
+}
+
+/**
+ * Get the bounding box of a geohash cell.
+ */
+export function geohashToBoundingBox(hash: string): {
+  latMin: number
+  latMax: number
+  lngMin: number
+  lngMax: number
+} {
+  let latMin = -90,
+    latMax = 90
+  let lngMin = -180,
+    lngMax = 180
+  let isLng = true
+
+  for (const c of hash) {
+    const idx = BASE32.indexOf(c)
+    if (idx === -1) break
+    for (let bit = 4; bit >= 0; bit--) {
+      if (isLng) {
+        const mid = (lngMin + lngMax) / 2
+        if ((idx >> bit) & 1) {
+          lngMin = mid
+        } else {
+          lngMax = mid
+        }
+      } else {
+        const mid = (latMin + latMax) / 2
+        if ((idx >> bit) & 1) {
+          latMin = mid
+        } else {
+          latMax = mid
+        }
+      }
+      isLng = !isLng
+    }
+  }
+
+  return { latMin, latMax, lngMin, lngMax }
+}
+
+/**
+ * Get the 8 neighbouring geohash cells (same precision).
+ */
+export function geohashNeighbors(hash: string): string[] {
+  const { lat, lng } = decodeGeohash(hash)
+  const bbox = geohashToBoundingBox(hash)
+  const latStep = bbox.latMax - bbox.latMin
+  const lngStep = bbox.lngMax - bbox.lngMin
+  const precision = hash.length
+
+  const offsets = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1],           [0, 1],
+    [1, -1],  [1, 0],  [1, 1],
+  ]
+
+  const neighbors: string[] = []
+  for (const [dLat, dLng] of offsets) {
+    const nLat = lat + dLat * latStep
+    const nLng = lng + dLng * lngStep
+    if (nLat >= -90 && nLat <= 90 && nLng >= -180 && nLng <= 180) {
+      neighbors.push(encodeGeohash(nLat, nLng, precision))
+    }
+  }
+
+  return [...new Set(neighbors)]
+}

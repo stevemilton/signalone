@@ -4,6 +4,9 @@ import { verifyAuth } from '@/lib/auth/verify'
 import { findControlRoom } from '@/lib/utils/postcode'
 import { convertToWhat3Words } from '@/lib/utils/what3words'
 import { sendPushToUser } from '@/lib/firebase/push'
+import { computeRiskScore } from '@/lib/risk/scoring'
+import { GEOHASH_PRECISION } from '@/lib/risk/constants'
+import type { SpatialInsights, TemporalInsights, UserInsights, FalseAlarmPatterns } from '@/types/risk'
 import type { Alert, RealtimeAlertState, User } from '@/types'
 
 export async function POST(request: Request) {
@@ -198,6 +201,43 @@ export async function POST(request: Request) {
         url: '/control-room/dashboard',
       })
     }
+
+    // Fire-and-forget: enrich alert with risk score
+    ;(async () => {
+      try {
+        const col = adminDb.collection('riskInsights')
+        const [spatialDoc, temporalDoc, usersDoc, falseAlarmDoc] = await Promise.all([
+          col.doc('spatial').get(),
+          col.doc('temporal').get(),
+          col.doc('users').get(),
+          col.doc('falseAlarmPatterns').get(),
+        ])
+
+        const spatial = spatialDoc.exists ? (spatialDoc.data() as SpatialInsights) : null
+        const temporal = temporalDoc.exists ? (temporalDoc.data() as TemporalInsights) : null
+        const users = usersDoc.exists ? (usersDoc.data() as UserInsights) : null
+        const falseAlarmPatternsData = falseAlarmDoc.exists ? (falseAlarmDoc.data() as FalseAlarmPatterns) : null
+
+        const riskResult = computeRiskScore(
+          {
+            lat: location.lat,
+            lng: location.lng,
+            userId: auth.uid,
+            alertType,
+            passengerFeelsSafe: passengerFeelsSafe ?? undefined,
+          },
+          { spatial, temporal, users, falseAlarmPatterns: falseAlarmPatternsData }
+        )
+
+        await alertRef.update({
+          riskScore: riskResult.score,
+          riskLevel: riskResult.level,
+          riskFactors: riskResult.factors.map(f => ({ name: f.name, score: f.score, weight: f.weight })),
+        })
+      } catch (err) {
+        console.error('Risk enrichment failed (non-blocking):', err)
+      }
+    })()
 
     return NextResponse.json({ alertId, alert: alertData }, { status: 201 })
   } catch (error) {

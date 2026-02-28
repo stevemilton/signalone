@@ -3,6 +3,7 @@ import { adminDb, adminRtdb } from '@/lib/firebase/admin'
 import { verifyAuth } from '@/lib/auth/verify'
 import { findControlRoom } from '@/lib/utils/postcode'
 import { convertToWhat3Words } from '@/lib/utils/what3words'
+import { sendPushToUser } from '@/lib/firebase/push'
 import type { Alert, RealtimeAlertState, User } from '@/types'
 
 export async function POST(request: Request) {
@@ -186,6 +187,15 @@ export async function POST(request: Request) {
       await adminDb.collection('operators').doc(operatorDoc.id).update({
         status: 'busy',
         activeAlerts: [...(operatorDoc.data().activeAlerts || []), alertId],
+      })
+    }
+
+    // Send push notification to assigned operator (fire-and-forget)
+    if (assignedOperatorId) {
+      sendPushToUser(assignedOperatorId, {
+        title: `New ${alertType === 'red' ? 'Red' : 'Blue'} Alert`,
+        body: `Alert from ${locationName || riskPostcode}`,
+        url: '/control-room/dashboard',
       })
     }
 

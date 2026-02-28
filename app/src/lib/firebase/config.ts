@@ -3,6 +3,7 @@ import { getAuth, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
 import { getDatabase, type Database } from 'firebase/database'
 import { getStorage, type FirebaseStorage } from 'firebase/storage'
+import { getMessaging, type Messaging } from 'firebase/messaging'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'placeholder',
@@ -22,6 +23,7 @@ let _auth: Auth | null = null
 let _db: Firestore | null = null
 let _rtdb: Database | null = null
 let _storage: FirebaseStorage | null = null
+let _messaging: Messaging | null = null
 
 export const auth: Auth = new Proxy({} as Auth, {
   get(_, prop) {
@@ -48,6 +50,16 @@ export const storage: FirebaseStorage = new Proxy({} as FirebaseStorage, {
   get(_, prop) {
     if (!_storage) _storage = getStorage(getApp())
     return (_storage as unknown as Record<string, unknown>)[prop as string]
+  },
+})
+
+export const messaging: Messaging = new Proxy({} as Messaging, {
+  get(_, prop) {
+    if (typeof window === 'undefined') {
+      throw new Error('Firebase Messaging is only available in the browser')
+    }
+    if (!_messaging) _messaging = getMessaging(getApp())
+    return (_messaging as unknown as Record<string, unknown>)[prop as string]
   },
 })
 

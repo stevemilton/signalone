@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
+import type { MessagePayload } from 'firebase/messaging'
 
 function ConnectionIndicator() {
   const [online, setOnline] = useState(true)
@@ -31,6 +33,15 @@ function ConnectionIndicator() {
 
 export default function PassengerLayout({ children }: { children: React.ReactNode }) {
   useAuth()
+
+  const handleForegroundMessage = useCallback((payload: MessagePayload) => {
+    const { title, body } = payload.data || {}
+    if (title && Notification.permission === 'granted') {
+      new Notification(title, { body: body || '', icon: '/icon-192.png' })
+    }
+  }, [])
+
+  usePushNotifications(handleForegroundMessage)
 
   return (
     <div className="max-w-[430px] mx-auto min-h-screen bg-slate-50 relative">

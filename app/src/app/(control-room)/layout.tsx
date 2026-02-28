@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import { signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { useAuth } from '@/hooks/useAuth'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 export default function ControlRoomLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  usePushNotifications()
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('connected')
 
   useEffect(() => {

@@ -119,6 +119,7 @@ export interface User {
   alertsToday: number
   lastAlertDate: string | null
   activeAlertId: string | null
+  fcmTokens: string[]
   createdAt: number
   updatedAt: number
 }

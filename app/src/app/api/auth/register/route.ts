@@ -63,6 +63,7 @@ export async function POST(request: Request) {
       alertsToday: 0,
       lastAlertDate: null,
       activeAlertId: null,
+      fcmTokens: [],
       createdAt: now,
       updatedAt: now,
     }

@@ -2,6 +2,7 @@ import { initializeApp, getApps, cert, type App } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getDatabase } from 'firebase-admin/database'
+import { getMessaging } from 'firebase-admin/messaging'
 
 function getAdminApp(): App {
   if (getApps().length > 0) return getApps()[0]
@@ -39,5 +40,12 @@ export const adminRtdb = new Proxy({} as ReturnType<typeof getDatabase>, {
   get(_, prop) {
     const rtdb = getDatabase(getAdminApp())
     return (rtdb as unknown as Record<string, unknown>)[prop as string]
+  },
+})
+
+export const adminMessaging = new Proxy({} as ReturnType<typeof getMessaging>, {
+  get(_, prop) {
+    const messaging = getMessaging(getAdminApp())
+    return (messaging as unknown as Record<string, unknown>)[prop as string]
   },
 })

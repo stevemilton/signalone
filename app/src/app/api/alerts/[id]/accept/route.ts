@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { adminDb, adminRtdb } from '@/lib/firebase/admin'
 import { verifyAuth } from '@/lib/auth/verify'
 import { sendPushToUser } from '@/lib/firebase/push'
+import { sendAlertAcceptedEmail } from '@/lib/email/send'
 import type { Alert } from '@/types'
 
 export async function POST(
@@ -97,6 +98,12 @@ export async function POST(
       body: `An operator is now monitoring your alert`,
       url: '/alert/monitoring',
     })
+
+    // Send email notification to citizen (fire-and-forget)
+    const citizenDoc = await adminDb.collection('users').doc(alert.userId).get()
+    if (citizenDoc.data()?.email) {
+      sendAlertAcceptedEmail(citizenDoc.data()!, alert)
+    }
 
     // Fetch updated alert
     const updatedDoc = await adminDb.collection('alerts').doc(id).get()

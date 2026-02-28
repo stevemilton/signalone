@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase/admin'
 import { verifyAuth } from '@/lib/auth/verify'
+import { sendMaliciousWarningEmail } from '@/lib/email/send'
 import type { Incident } from '@/types'
 
 export async function GET(
@@ -166,6 +167,11 @@ export async function PATCH(
             sanctionExpiresAt: nextSanction.expiresAt,
             updatedAt: now,
           })
+
+          // Send warning/ban email (fire-and-forget)
+          if (citizenData?.email) {
+            sendMaliciousWarningEmail(citizenData, nextSanction.level)
+          }
         }
       }
     }

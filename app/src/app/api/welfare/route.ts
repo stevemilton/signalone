@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/firebase/admin'
 import { verifyAuth } from '@/lib/auth/verify'
+import { sendWelfareBookingEmail } from '@/lib/email/send'
 import type { WelfareBooking } from '@/types'
 
 export async function POST(request: Request) {
@@ -86,6 +87,12 @@ export async function POST(request: Request) {
     }
 
     await bookingRef.set(bookingData)
+
+    // Send booking confirmation email (fire-and-forget)
+    const userDoc = await adminDb.collection('users').doc(auth.uid).get()
+    if (userDoc.data()?.email) {
+      sendWelfareBookingEmail(userDoc.data()!, bookingData)
+    }
 
     return NextResponse.json({ booking: bookingData }, { status: 201 })
   } catch (error) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { sendWelcomeEmail } from '@/lib/email/send'
 import type { User } from '@/types'
 
 export async function POST(request: Request) {
@@ -73,6 +74,9 @@ export async function POST(request: Request) {
 
     // Set custom claims for role-based access
     await adminAuth.setCustomUserClaims(authUser.uid, { role: 'citizen' })
+
+    // Send welcome email (fire-and-forget)
+    sendWelcomeEmail(userData)
 
     return NextResponse.json({ user: userData }, { status: 201 })
   } catch (error: unknown) {

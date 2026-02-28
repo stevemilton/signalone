@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { adminDb, adminRtdb } from '@/lib/firebase/admin'
 import { verifyAuth } from '@/lib/auth/verify'
 import { generateReferenceNumber } from '@/lib/utils/format'
+import { sendAlertClosedEmail } from '@/lib/email/send'
 import type { Alert, Incident, AlertClassification, AlertStatus } from '@/types'
 
 export async function GET(
@@ -126,6 +127,12 @@ export async function PATCH(
           reviewedAt: null,
         }
         await incidentRef.set(incidentData)
+
+        // Send incident report email to citizen (fire-and-forget)
+        const citizenDoc = await adminDb.collection('users').doc(alert.userId).get()
+        if (citizenDoc.data()?.email) {
+          sendAlertClosedEmail(citizenDoc.data()!, alert, incidentData)
+        }
 
         // Clear RTDB state
         await adminRtdb.ref(`activeAlerts/${id}`).remove()

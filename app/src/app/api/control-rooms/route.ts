@@ -81,6 +81,7 @@ export async function POST(request: Request) {
       isActive: true,
       operators: [],
       cameras: [],
+      vmsConfig: null,
       createdAt: now,
       updatedAt: now,
     }

@@ -1,66 +1,70 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card } from '@/components/shared/Card'
+import { auth as firebaseAuth } from '@/lib/firebase/config'
 
-const MOCK_CAMERAS = [
-  { id: '1', name: 'Stevenage Town Centre - High Street', status: 'online' as const },
-  { id: '2', name: 'Stevenage Town Centre - Queensway', status: 'online' as const },
-  { id: '3', name: 'Stevenage Railway Station - Entrance', status: 'online' as const },
-  { id: '4', name: 'Stevenage Railway Station - Platform 1', status: 'online' as const },
-  { id: '5', name: 'Stevenage Bus Interchange', status: 'online' as const },
-  { id: '6', name: 'St Georges Way / Danestrete', status: 'online' as const },
-  { id: '7', name: 'Lytton Way Underpass North', status: 'online' as const },
-  { id: '8', name: 'Lytton Way Underpass South', status: 'offline' as const },
-  { id: '9', name: 'The Forum - Main Entrance', status: 'online' as const },
-  { id: '10', name: 'Westgate Centre - Car Park A', status: 'online' as const },
-  { id: '11', name: 'Westgate Centre - Car Park B', status: 'online' as const },
-  { id: '12', name: 'Fairlands Valley Park - Main Gate', status: 'online' as const },
-  { id: '13', name: 'Fairlands Valley Park - Lake Path', status: 'online' as const },
-  { id: '14', name: 'Gunnels Wood Road / Six Hills Way', status: 'online' as const },
-  { id: '15', name: 'Roaring Meg Retail Park', status: 'online' as const },
-  { id: '16', name: 'Leisure Park - Cinema Complex', status: 'online' as const },
-  { id: '17', name: 'Leisure Park - Car Park', status: 'online' as const },
-  { id: '18', name: 'Coreys Mill Lane / North Road', status: 'online' as const },
-  { id: '19', name: 'Hitchin Road / Letchmore Road', status: 'offline' as const },
-  { id: '20', name: 'Bedwell Crescent', status: 'online' as const },
-  { id: '21', name: 'Monks Wood Way / Broadwater Crescent', status: 'online' as const },
-  { id: '22', name: 'Popple Way / Chells Way', status: 'online' as const },
-  { id: '23', name: 'Pin Green - Shopping Parade', status: 'online' as const },
-  { id: '24', name: 'Shephall Green', status: 'online' as const },
-  { id: '25', name: 'Broadhall Way / Monkswood Way', status: 'online' as const },
-  { id: '26', name: 'Old Town - High Street North', status: 'online' as const },
-  { id: '27', name: 'Old Town - High Street South', status: 'online' as const },
-  { id: '28', name: 'Walkern Road / Rectory Lane', status: 'online' as const },
-  { id: '29', name: 'Grace Way Underpass', status: 'online' as const },
-  { id: '30', name: 'Martins Way / Scarborough Ave', status: 'online' as const },
-  { id: '31', name: 'Symonds Green', status: 'online' as const },
-  { id: '32', name: 'Chells Manor', status: 'online' as const },
-  { id: '33', name: 'St Nicholas CE Primary - Pedestrian Crossing', status: 'online' as const },
-  { id: '34', name: 'Bandley Hill Underpass', status: 'online' as const },
-  { id: '35', name: 'York Road / London Road', status: 'online' as const },
-  { id: '36', name: 'Almonds Lane / Sish Lane', status: 'online' as const },
-  { id: '37', name: 'Corey Mill Lane / Webb Rise', status: 'online' as const },
-  { id: '38', name: 'Rockingham Way / Todd Way', status: 'online' as const },
-  { id: '39', name: 'Great Ashby - District Centre', status: 'online' as const },
-  { id: '40', name: 'Great Ashby - Whitehorse Lane', status: 'online' as const },
-  { id: '41', name: 'Poplars - Shopping Area', status: 'online' as const },
-  { id: '42', name: 'Bedwell Park - Main Path', status: 'online' as const },
-  { id: '43', name: 'King George V Playing Fields', status: 'online' as const },
-  { id: '44', name: 'Ridlins Athletics Track', status: 'online' as const },
-  { id: '45', name: 'Stevenage Arts & Leisure Centre', status: 'online' as const },
-  { id: '46', name: 'Stevenage Swimming Centre', status: 'online' as const },
-  { id: '47', name: 'Knebworth Park Road', status: 'online' as const },
-  { id: '48', name: 'Woolenwick Junior School - Pedestrian Zone', status: 'online' as const },
-]
+interface PublicCamera {
+  id: string
+  name: string
+  locationName: string
+  type: 'fixed' | 'ptz'
+  status: 'online' | 'offline'
+}
 
 export default function MapPage() {
   const router = useRouter()
   const { user } = useAuthStore()
+  const [cameras, setCameras] = useState<PublicCamera[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const onlineCameras = MOCK_CAMERAS.filter((c) => c.status === 'online')
-  const offlineCameras = MOCK_CAMERAS.filter((c) => c.status === 'offline')
+  useEffect(() => {
+    async function fetchCameras() {
+      try {
+        const idToken = await firebaseAuth.currentUser?.getIdToken()
+        if (!idToken || !user?.controlRoomId) {
+          // Try to find control room from user's risk postcode
+          // For now, fall back to fetching without controlRoomId
+          setLoading(false)
+          return
+        }
+
+        const res = await fetch(`/api/control-rooms/${user.controlRoomId}`, {
+          headers: { Authorization: `Bearer ${idToken}` },
+        })
+
+        if (!res.ok) {
+          setLoading(false)
+          return
+        }
+
+        const data = await res.json()
+        const allCameras = data.controlRoom?.cameras || []
+
+        // Strip sensitive fields — passengers only see name, location, type, status
+        const publicCameras: PublicCamera[] = allCameras.map((cam: Record<string, unknown>) => ({
+          id: cam.id as string,
+          name: cam.name as string,
+          locationName: (cam.locationName as string) || (cam.name as string),
+          type: cam.type as 'fixed' | 'ptz',
+          status: cam.status as 'online' | 'offline',
+        }))
+
+        setCameras(publicCameras)
+      } catch (err) {
+        console.error('Failed to fetch cameras:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCameras()
+  }, [user?.controlRoomId])
+
+  const onlineCameras = cameras.filter((c) => c.status === 'online')
+  const offlineCameras = cameras.filter((c) => c.status === 'offline')
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -85,7 +89,7 @@ export default function MapPage() {
         {/* Stats */}
         <div className="flex gap-3 mb-5">
           <div className="flex-1 bg-white border-2 border-slate-200 rounded-xl p-3 text-center">
-            <p className="text-2xl font-extrabold text-blue-700">{MOCK_CAMERAS.length}</p>
+            <p className="text-2xl font-extrabold text-blue-700">{cameras.length}</p>
             <p className="text-xs text-slate-500 font-medium">Total Cameras</p>
           </div>
           <div className="flex-1 bg-white border-2 border-green-200 rounded-xl p-3 text-center">
@@ -110,23 +114,40 @@ export default function MapPage() {
           </div>
         </Card>
 
+        {/* Loading state */}
+        {loading && (
+          <div className="text-center py-8">
+            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-xs text-slate-400">Loading cameras...</p>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && cameras.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-sm text-slate-500">No cameras available in your area yet.</p>
+          </div>
+        )}
+
         {/* Camera List */}
-        <div className="space-y-1.5">
-          {MOCK_CAMERAS.map((camera) => (
-            <div
-              key={camera.id}
-              className="flex items-center gap-3 px-3.5 py-2.5 bg-white border border-slate-100 rounded-xl"
-            >
-              <span className="text-base flex-shrink-0">
-                {camera.status === 'online' ? '📷' : '📷'}
-              </span>
-              <p className="text-xs text-slate-700 flex-1 leading-snug">{camera.name}</p>
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                camera.status === 'online' ? 'bg-green-500' : 'bg-red-400'
-              }`} />
-            </div>
-          ))}
-        </div>
+        {!loading && cameras.length > 0 && (
+          <div className="space-y-1.5">
+            {cameras.map((camera) => (
+              <div
+                key={camera.id}
+                className="flex items-center gap-3 px-3.5 py-2.5 bg-white border border-slate-100 rounded-xl"
+              >
+                <span className="text-base flex-shrink-0">
+                  {camera.status === 'online' ? '📷' : '📷'}
+                </span>
+                <p className="text-xs text-slate-700 flex-1 leading-snug">{camera.name}</p>
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  camera.status === 'online' ? 'bg-green-500' : 'bg-red-400'
+                }`} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,43 +1,18 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ref, update } from 'firebase/database'
-import { rtdb } from '@/lib/firebase/config'
+import { rtdb, auth as firebaseAuth } from '@/lib/firebase/config'
 import { useControlRoomStore } from '@/stores/control-room-store'
 import { useAuthStore } from '@/stores/auth-store'
 import type { Alert, Camera } from '@/types'
 
-// Generate mock cameras near the alert location
-function generateMockCameras(alertLat: number, alertLng: number, count: number): Camera[] {
-  const cameraNames = [
-    'High Street Junction NE',
-    'Station Approach Cam 1',
-    'Market Square PTZ',
-    'Bus Stop A - Northbound',
-    'Park Entrance Gate 3',
-    'Underground Exit B',
-    'Crosswalk Cam 7',
-    'Shopping Centre East',
-    'Car Park Level 2',
-    'Footbridge South',
-  ]
-
-  return Array.from({ length: count }, (_, i) => ({
-    id: `cam_${i}_${Date.now()}`,
-    name: cameraNames[i % cameraNames.length],
-    location: {
-      lat: alertLat + (Math.random() - 0.5) * 0.003,
-      lng: alertLng + (Math.random() - 0.5) * 0.003,
-      accuracy: 5,
-      timestamp: Date.now(),
-    },
-    locationName: cameraNames[i % cameraNames.length],
-    type: Math.random() > 0.5 ? 'ptz' : 'fixed' as 'ptz' | 'fixed',
-    status: Math.random() > 0.15 ? 'online' : 'offline' as 'online' | 'offline',
-    controlRoomId: 'cr_london_central',
-  }))
+interface NearbyCamera extends Camera {
+  distanceMetres: number
 }
+
+const RADIUS_OPTIONS = [100, 200, 300, 500] as const
 
 export default function CCTVSearchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: alertId } = use(params)
@@ -46,24 +21,76 @@ export default function CCTVSearchPage({ params }: { params: Promise<{ id: strin
   const { alerts, setAlerts, addLogEntry, incidentLog } = useControlRoomStore()
 
   const [alert, setAlert] = useState<Alert | null>(null)
-  const [cameras, setCameras] = useState<Camera[]>([])
+  const [cameras, setCameras] = useState<NearbyCamera[]>([])
+  const [totalInRadius, setTotalInRadius] = useState(0)
+  const [radius, setRadius] = useState<number>(200)
+  const [loadingCameras, setLoadingCameras] = useState(false)
+  const [cameraError, setCameraError] = useState('')
   const [locating, setLocating] = useState(false)
   const [searching, setSearching] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   // Find alert from store
   useEffect(() => {
     const found = alerts.find((a) => a.id === alertId)
-    if (found) {
-      setAlert(found)
-      // Generate mock cameras near alert location
-      const mockCameras = generateMockCameras(
-        found.location.lat,
-        found.location.lng,
-        Math.floor(Math.random() * 4) + 4
-      )
-      setCameras(mockCameras)
-    }
+    if (found) setAlert(found)
   }, [alertId, alerts])
+
+  // Fetch nearby cameras when alert or radius changes
+  const fetchCameras = useCallback(async () => {
+    if (!alert) return
+
+    setLoadingCameras(true)
+    setCameraError('')
+
+    try {
+      const idToken = await firebaseAuth.currentUser?.getIdToken()
+      if (!idToken) {
+        setCameraError('Not authenticated')
+        return
+      }
+
+      const params = new URLSearchParams({
+        lat: String(alert.location.lat),
+        lng: String(alert.location.lng),
+        controlRoomId: alert.controlRoomId,
+        radius: String(radius),
+        limit: '20',
+      })
+
+      const res = await fetch(`/api/cameras/nearby?${params}`, {
+        headers: { Authorization: `Bearer ${idToken}` },
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to fetch cameras')
+      }
+
+      const data = await res.json()
+      setCameras(data.cameras || [])
+      setTotalInRadius(data.totalInRadius || 0)
+    } catch (err) {
+      setCameraError(err instanceof Error ? err.message : 'Failed to load cameras')
+      setCameras([])
+    } finally {
+      setLoadingCameras(false)
+    }
+  }, [alert, radius])
+
+  useEffect(() => {
+    fetchCameras()
+  }, [fetchCameras])
+
+  const handleCopyVmsRef = async (vmsRef: string, cameraId: string) => {
+    try {
+      await navigator.clipboard.writeText(vmsRef)
+      setCopiedId(cameraId)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch {
+      // Fallback: select text approach isn't needed in control room context
+    }
+  }
 
   const handleIncidentLocated = async () => {
     if (!alert || !user) return
@@ -100,7 +127,7 @@ export default function CCTVSearchPage({ params }: { params: Promise<{ id: strin
 
       // Call API
       try {
-        const idToken = await (await import('@/lib/firebase/config')).auth.currentUser?.getIdToken()
+        const idToken = await firebaseAuth.currentUser?.getIdToken()
         if (idToken) {
           await fetch(`/api/alerts/${alertId}`, {
             method: 'PATCH',
@@ -161,8 +188,6 @@ export default function CCTVSearchPage({ params }: { params: Promise<{ id: strin
   }
 
   const isRed = alert.alertType === 'red'
-  const onlineCameras = cameras.filter((c) => c.status === 'online')
-  const offlineCameras = cameras.filter((c) => c.status === 'offline')
 
   return (
     <div className="p-6 max-w-5xl mx-auto animate-fade-in">
@@ -185,32 +210,61 @@ export default function CCTVSearchPage({ params }: { params: Promise<{ id: strin
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Camera List + Map */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Camera Grid */}
-          <div>
-            <h2 className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-3">
-              Available Cameras ({onlineCameras.length} online, {offlineCameras.length} offline)
+          {/* Radius Selector + Camera Count */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">
+              Nearby Cameras ({totalInRadius} within {radius}m)
             </h2>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider">Radius:</span>
+              <select
+                value={radius}
+                onChange={(e) => setRadius(Number(e.target.value))}
+                className="text-xs bg-slate-800 text-slate-300 border border-slate-600 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {RADIUS_OPTIONS.map((r) => (
+                  <option key={r} value={r}>{r}m</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
+          {/* Loading / Error states */}
+          {loadingCameras && (
+            <div className="text-center py-8">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs text-slate-400">Searching for cameras...</p>
+            </div>
+          )}
+
+          {cameraError && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center">
+              <p className="text-xs text-red-400">{cameraError}</p>
+            </div>
+          )}
+
+          {!loadingCameras && !cameraError && cameras.length === 0 && (
+            <div className="rounded-xl border border-slate-600 p-8 text-center" style={{ backgroundColor: '#1e293b' }}>
+              <p className="text-sm text-slate-400">No cameras found within {radius}m</p>
+              <p className="text-xs text-slate-500 mt-1">Try increasing the search radius</p>
+            </div>
+          )}
+
+          {/* Camera Grid */}
+          {!loadingCameras && cameras.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {cameras.map((camera) => (
                 <div
                   key={camera.id}
-                  className={`rounded-xl p-4 border ${
-                    camera.status === 'online'
-                      ? 'border-green-500/20'
-                      : 'border-red-500/20 opacity-50'
-                  }`}
+                  className="rounded-xl p-4 border border-green-500/20"
                   style={{ backgroundColor: '#1e293b' }}
                 >
+                  {/* Header: VMS Ref + Type Badge */}
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          camera.status === 'online' ? 'bg-green-500' : 'bg-red-500'
-                        }`}
-                      />
-                      <span className="text-[13px] font-semibold text-slate-200">
-                        {camera.name}
+                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                      <span className="text-[14px] font-bold text-blue-400 font-mono tracking-wide">
+                        {camera.vmsReference}
                       </span>
                     </div>
                     <span
@@ -224,25 +278,53 @@ export default function CCTVSearchPage({ params }: { params: Promise<{ id: strin
                     </span>
                   </div>
 
-                  {camera.status === 'online' && (
-                    <div className="mt-2 rounded-lg overflow-hidden bg-slate-900 h-24 flex items-center justify-center">
-                      <div className="text-center">
-                        <p className="text-[11px] text-slate-500 uppercase tracking-wider">Live Feed</p>
-                        <div className="flex items-center gap-1 mt-1 justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse-opacity" />
-                          <span className="text-[10px] text-red-400">REC</span>
-                        </div>
-                      </div>
+                  {/* Camera Name */}
+                  <p className="text-[13px] font-semibold text-slate-200 mb-1">{camera.name}</p>
+
+                  {/* Distance + Location */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[12px] font-semibold text-amber-400">
+                      {camera.distanceMetres}m away
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {camera.locationName}
+                    </span>
+                  </div>
+
+                  {/* Tags */}
+                  {camera.tags && camera.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {camera.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[9px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded"
+                        >
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   )}
 
-                  <p className="text-[10px] text-slate-500 mt-2">
-                    {camera.locationName}
-                  </p>
+                  {/* Action: Open in VMS or Copy Ref */}
+                  {camera.vmsDeepLink ? (
+                    <a
+                      href={camera.vmsDeepLink}
+                      className="block w-full text-center text-[12px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg py-2 transition-colors"
+                    >
+                      Open in VMS
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => handleCopyVmsRef(camera.vmsReference, camera.id)}
+                      className="w-full text-center text-[12px] font-semibold text-slate-300 border border-slate-600 hover:border-slate-400 rounded-lg py-2 transition-colors"
+                    >
+                      {copiedId === camera.id ? 'Copied!' : 'Copy Camera Ref'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
-          </div>
+          )}
 
           {/* Map Placeholder */}
           <div
@@ -257,7 +339,7 @@ export default function CCTVSearchPage({ params }: { params: Promise<{ id: strin
               </div>
               <p className="text-[13px] text-slate-400 font-medium">Camera Position Map</p>
               <p className="text-[11px] text-slate-500 mt-1">
-                {onlineCameras.length} camera{onlineCameras.length !== 1 ? 's' : ''} plotted near alert location
+                {cameras.length} camera{cameras.length !== 1 ? 's' : ''} plotted near alert location
               </p>
               <p className="text-[11px] text-blue-400 mt-1">
                 ///{alert.what3words}

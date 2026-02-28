@@ -127,6 +127,12 @@ export interface User {
 
 // --- Control Room Types ---
 
+export interface VmsConfig {
+  vmsName: string
+  vmsVersion: string
+  deepLinkTemplate: string | null
+}
+
 export interface ControlRoom {
   id: string
   name: string
@@ -138,6 +144,7 @@ export interface ControlRoom {
   isActive: boolean
   operators: string[] // operator user IDs
   cameras: Camera[]
+  vmsConfig: VmsConfig | null
   createdAt: number
   updatedAt: number
 }
@@ -150,6 +157,13 @@ export interface Camera {
   type: 'fixed' | 'ptz'
   status: 'online' | 'offline'
   controlRoomId: string
+  vmsReference: string
+  vmsDeepLink: string | null
+  geohash: string
+  bearing: number | null
+  fieldOfView: number | null
+  lastStatusCheck: number | null
+  tags: string[]
 }
 
 // --- Operator Types ---

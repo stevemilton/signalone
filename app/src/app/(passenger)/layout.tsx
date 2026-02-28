@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { InstallPrompt } from '@/components/shared/InstallPrompt'
 import type { MessagePayload } from 'firebase/messaging'
 
 function ConnectionIndicator() {
@@ -47,6 +48,7 @@ export default function PassengerLayout({ children }: { children: React.ReactNod
     <div className="max-w-[430px] mx-auto min-h-screen bg-slate-50 relative">
       <ConnectionIndicator />
       {children}
+      <InstallPrompt />
     </div>
   )
 }

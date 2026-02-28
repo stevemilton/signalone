@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Database:** Firebase Firestore (persistent data) + Firebase Realtime Database (real-time alert state)
 - **Auth:** Firebase Authentication
 - **State:** Zustand
-- **Deployment:** Railway (target)
+- **Deployment:** Railway (live)
 
 ## Project Structure
 
@@ -25,7 +25,7 @@ app/                          # Next.js application
 │   │   ├── (passenger)/      # Passenger App (mobile-first, 20 screens)
 │   │   ├── (control-room)/   # Control Room Dashboard (dark theme, 9 screens)
 │   │   ├── (admin)/          # Admin Panel (12 screens)
-│   │   └── api/              # API Routes (14 endpoints)
+│   │   └── api/              # API Routes (24 endpoints)
 │   ├── components/
 │   │   ├── shared/           # Shared UI components (Button, Card, Input, Modal, etc.)
 │   │   └── control-room/     # Control room specific components

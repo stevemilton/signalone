@@ -51,6 +51,7 @@ export async function POST(request: Request) {
       emergencyContactName: emergencyContactName.trim(),
       emergencyContactPhone: emergencyContactPhone.trim(),
       photoUrl: null,
+      idDocumentUrl: null,
       riskPostcode: '',
       controlRoomId: null,
       safetyZone: '',

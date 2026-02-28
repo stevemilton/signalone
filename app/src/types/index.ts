@@ -107,6 +107,7 @@ export interface User {
   emergencyContactName: string
   emergencyContactPhone: string
   photoUrl: string | null
+  idDocumentUrl: string | null
   riskPostcode: string
   controlRoomId: string | null
   safetyZone: string

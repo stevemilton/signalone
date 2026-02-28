@@ -13,6 +13,9 @@ out/
 # Service account keys
 *-firebase-adminsdk-*.json
 
+# Generated service worker (contains Firebase config from env vars)
+public/firebase-messaging-sw.js
+
 # Logs
 *.log
 

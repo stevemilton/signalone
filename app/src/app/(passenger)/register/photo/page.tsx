@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/shared/Button'
+import { ensureSignedIn } from '@/lib/auth/ensure-signed-in'
+import { uploadProfilePhoto } from '@/lib/firebase/storage-upload'
 
 function ProgressBar({ step, total }: { step: number; total: number }) {
   return (
@@ -25,46 +27,72 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
 export default function PhotoPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [photo, setPhoto] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
 
   const handleCapture = () => {
     fileInputRef.current?.click()
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const selected = e.target.files?.[0]
+    if (!selected) return
+
+    setFile(selected)
+    setError(null)
 
     const reader = new FileReader()
     reader.onload = (event) => {
-      setPhoto(event.target?.result as string)
+      setPreview(event.target?.result as string)
     }
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(selected)
   }
 
   const handleContinue = async () => {
-    setLoading(true)
+    if (!file) return
 
-    // Store photo data for profile (in practice, upload to Firebase Storage)
+    setUploading(true)
+    setError(null)
+
     try {
-      if (photo) {
-        sessionStorage.setItem('esaf_reg_photo', photo)
+      const uid = await ensureSignedIn()
+      if (!uid) {
+        setError('Unable to authenticate. Please try again.')
+        setUploading(false)
+        return
       }
-    } catch {
-      // Ignore storage quota errors for large photos
-    }
 
-    router.push('/register/safety-zone')
+      const { promise } = uploadProfilePhoto(uid, file, setUploadProgress)
+      const downloadUrl = await promise
+
+      const idToken = await (await import('firebase/auth')).getAuth().currentUser?.getIdToken()
+      await fetch(`/api/users/${uid}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ photoUrl: downloadUrl }),
+      })
+
+      router.push('/register/safety-zone')
+    } catch {
+      setError('Upload failed. Please try again.')
+      setUploading(false)
+    }
   }
 
   const handleSkip = () => {
-    sessionStorage.removeItem('esaf_reg_photo')
     router.push('/register/safety-zone')
   }
 
   const handleRetake = () => {
-    setPhoto(null)
+    setPreview(null)
+    setFile(null)
+    setError(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -94,9 +122,9 @@ export default function PhotoPage() {
           {/* Photo Circle */}
           <div className="mb-6 flex justify-center">
             <div className="w-[100px] h-[100px] rounded-full border-[3px] border-blue-500 bg-slate-100 flex items-center justify-center overflow-hidden">
-              {photo ? (
+              {preview ? (
                 <img
-                  src={photo}
+                  src={preview}
                   alt="Profile preview"
                   className="w-full h-full object-cover"
                 />
@@ -109,7 +137,11 @@ export default function PhotoPage() {
             </div>
           </div>
 
-          {!photo ? (
+          {error && (
+            <p className="text-[13px] text-red-600 font-medium mb-4">{error}</p>
+          )}
+
+          {!preview ? (
             <>
               <p className="text-[14px] text-slate-600 mb-6 leading-relaxed max-w-xs mx-auto">
                 Take a clear, front-facing selfie. This photo is shared with the control room during <span className="font-semibold text-red-600">Red alerts only</span>.
@@ -132,6 +164,17 @@ export default function PhotoPage() {
                 Take Selfie
               </Button>
             </>
+          ) : uploading ? (
+            <div className="space-y-4">
+              <p className="text-[14px] text-blue-700 font-semibold">Uploading photo...</p>
+              <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-slate-400">{Math.round(uploadProgress)}%</p>
+            </div>
           ) : (
             <>
               <p className="text-[14px] text-green-700 font-semibold mb-6">
@@ -139,7 +182,7 @@ export default function PhotoPage() {
               </p>
 
               <div className="space-y-3">
-                <Button fullWidth size="lg" onClick={handleContinue} loading={loading}>
+                <Button fullWidth size="lg" onClick={handleContinue}>
                   Continue
                 </Button>
 
@@ -150,7 +193,7 @@ export default function PhotoPage() {
             </>
           )}
 
-          {!photo && (
+          {!preview && (
             <button
               onClick={handleSkip}
               className="mt-4 text-sm text-slate-400 hover:text-slate-600 transition-colors"

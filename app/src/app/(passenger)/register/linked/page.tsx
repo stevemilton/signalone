@@ -35,9 +35,17 @@ export default function LinkedPage() {
       const password = sessionStorage.getItem('esaf_reg_password')
       const controlRoomId = sessionStorage.getItem('esaf_reg_control_room_id')
 
-      if (email && password) {
-        const credential = await signInWithEmailAndPassword(auth, email, password)
-        const idToken = await credential.user.getIdToken()
+      // Sign in only if not already signed in (photo/verify steps may have signed in early)
+      const alreadySignedIn = !!auth.currentUser
+      const user$ = alreadySignedIn
+        ? auth.currentUser!
+        : email && password
+          ? (await signInWithEmailAndPassword(auth, email, password)).user
+          : null
+
+      if (user$) {
+        const idToken = await user$.getIdToken()
+        const credential = { user: user$ }
 
         setFirebaseUid(credential.user.uid)
 
@@ -74,7 +82,6 @@ export default function LinkedPage() {
         sessionStorage.removeItem('esaf_reg_email')
         sessionStorage.removeItem('esaf_reg_password')
         sessionStorage.removeItem('esaf_reg_uid')
-        sessionStorage.removeItem('esaf_reg_photo')
         sessionStorage.removeItem('esaf_reg_postcode')
         sessionStorage.removeItem('esaf_reg_control_room_id')
         sessionStorage.removeItem('esaf_reg_control_room_name')

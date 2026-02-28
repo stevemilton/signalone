@@ -5,9 +5,11 @@
   "description": "E-SAF Civic Personal Safety Platform",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/generate-sw.js",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "tsx scripts/seed-test-accounts.ts"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.1",

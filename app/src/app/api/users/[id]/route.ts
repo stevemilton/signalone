@@ -89,6 +89,7 @@ export async function PATCH(
       'emergencyContactName',
       'emergencyContactPhone',
       'photoUrl',
+      'idDocumentUrl',
       'riskPostcode',
       'safetyZone',
       'locationName',

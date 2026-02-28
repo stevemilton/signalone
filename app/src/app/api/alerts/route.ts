@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { adminDb, adminRtdb } from '@/lib/firebase/admin'
 import { verifyAuth } from '@/lib/auth/verify'
 import { findControlRoom } from '@/lib/utils/postcode'
+import { convertToWhat3Words } from '@/lib/utils/what3words'
 import type { Alert, RealtimeAlertState, User } from '@/types'
 
 export async function POST(request: Request) {
@@ -83,6 +84,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Location must include lat and lng' }, { status: 400 })
     }
 
+    // Reverse geocode to What3Words (API result → profile fallback → empty)
+    const w3wResult = await convertToWhat3Words(location.lat, location.lng)
+    const resolvedWhat3Words = w3wResult || what3words || ''
+
     // Find control room by postcode
     const controlRoom = findControlRoom(riskPostcode)
     if (!controlRoom) {
@@ -126,7 +131,7 @@ export async function POST(request: Request) {
       },
       locationName: locationName || '',
       riskPostcode,
-      what3words: what3words || '',
+      what3words: resolvedWhat3Words,
       additionalInfo: additionalInfo || '',
       passengerFeelsSafe: passengerFeelsSafe ?? true,
       userName: alertType === 'red' ? (userName || user.fullName) : null,
@@ -161,6 +166,7 @@ export async function POST(request: Request) {
       additionalInfo: additionalInfo || '',
       passengerFeelsSafe: passengerFeelsSafe ?? true,
       location: alertData.location,
+      what3words: resolvedWhat3Words,
       updatedAt: now,
     }
     await adminRtdb.ref(`activeAlerts/${alertId}`).set(realtimeState)

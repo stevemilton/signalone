@@ -87,6 +87,7 @@ export interface RealtimeAlertState {
   additionalInfo: string
   passengerFeelsSafe: boolean
   location: GeoLocation
+  what3words?: string
   updatedAt: number
 }
 

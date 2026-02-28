@@ -1,0 +1,22 @@
+# Service account keys
+signalone-2d228-firebase-adminsdk-*.json
+*-firebase-adminsdk-*.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Build
+.next/
+out/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

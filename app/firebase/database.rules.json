@@ -1,0 +1,42 @@
+{
+  "rules": {
+    "activeAlerts": {
+      "$alertId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['alertType', 'status', 'updatedAt'])",
+        "alertType": {
+          ".validate": "newData.isString() && (newData.val() === 'blue' || newData.val() === 'red')"
+        },
+        "status": {
+          ".validate": "newData.isString()"
+        },
+        "operatorStatus": {
+          ".validate": "newData.isString() || newData.val() === null"
+        },
+        "additionalInfo": {
+          ".validate": "newData.isString()"
+        },
+        "passengerFeelsSafe": {
+          ".validate": "newData.isBoolean()"
+        },
+        "location": {
+          ".validate": "newData.hasChildren(['lat', 'lng'])"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    "connectionStatus": {
+      "$userId": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $userId"
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

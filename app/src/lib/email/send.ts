@@ -6,7 +6,7 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null
 
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Signal One <noreply@signalone.app>'
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Signal One <noreply@polarindustries.co>'
 
 /**
  * Low-level email send via Resend. Logs to Firestore `emailLogs`.

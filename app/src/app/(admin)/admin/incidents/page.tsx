@@ -238,7 +238,9 @@ export default function IncidentsPage() {
                   <tr
                     key={incident.id}
                     onClick={() => router.push(`/admin/incidents/${incident.id}`)}
-                    className="border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                    onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/admin/incidents/${incident.id}`) }}
+                    tabIndex={0}
+                    className="border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors focus-visible:bg-blue-50 focus-visible:outline-none"
                   >
                     <td className="py-3.5 pr-4">
                       <span className="text-xs font-mono font-medium text-blue-600">{incident.referenceNumber}</span>

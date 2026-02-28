@@ -29,10 +29,11 @@ export function Card({ children, variant = 'default', className = '', onClick, h
         rounded-2xl p-5
         ${variantClasses[variant]}
         ${hoverable ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}
-        ${onClick ? 'cursor-pointer' : ''}
+        ${onClick ? 'cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none' : ''}
         ${className}
       `}
       onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >

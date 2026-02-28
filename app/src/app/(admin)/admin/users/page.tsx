@@ -157,7 +157,9 @@ export default function UsersPage() {
                   <tr
                     key={user.id}
                     onClick={() => router.push(`/admin/users/${user.id}`)}
-                    className="border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
+                    onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/admin/users/${user.id}`) }}
+                    tabIndex={0}
+                    className="border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors focus-visible:bg-blue-50 focus-visible:outline-none"
                   >
                     <td className="py-3.5 pr-4 font-medium text-gray-900 whitespace-nowrap">{user.fullName}</td>
                     <td className="py-3.5 pr-4 text-gray-600">{user.email}</td>

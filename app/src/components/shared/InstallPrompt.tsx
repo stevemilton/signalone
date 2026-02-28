@@ -51,10 +51,20 @@ export function InstallPrompt() {
     setDeferredPrompt(null)
   }, [])
 
+  // Escape key handler
+  useEffect(() => {
+    if (!visible) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleDismiss()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [visible, handleDismiss])
+
   if (!visible) return null
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 max-w-[398px] mx-auto z-40 bg-white rounded-2xl shadow-lg border border-slate-200 p-4 flex items-start gap-3">
+    <div role="dialog" aria-label="Install Signal One" className="fixed bottom-4 left-4 right-4 max-w-[398px] mx-auto z-40 bg-white rounded-2xl shadow-lg border border-slate-200 p-4 flex items-start gap-3">
       <div className="shrink-0 w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center">
         <span className="text-white text-sm font-bold">S1</span>
       </div>
@@ -64,13 +74,13 @@ export function InstallPrompt() {
         <div className="flex gap-2 mt-3">
           <button
             onClick={handleInstall}
-            className="bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-800 active:bg-blue-900 transition-colors"
+            className="bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-800 active:bg-blue-900 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-300 focus-visible:outline-none"
           >
             Install
           </button>
           <button
             onClick={handleDismiss}
-            className="text-slate-500 text-xs font-medium px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+            className="text-slate-500 text-xs font-medium px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 focus-visible:outline-none"
           >
             Not now
           </button>

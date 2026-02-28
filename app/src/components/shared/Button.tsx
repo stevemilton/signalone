@@ -13,12 +13,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-gradient-to-br from-blue-700 to-blue-500 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 active:scale-[0.98]',
-  secondary: 'bg-slate-100 text-slate-700 border-2 border-slate-200 hover:bg-slate-200 active:scale-[0.98]',
-  outline: 'bg-transparent border-2 border-blue-500 text-blue-600 hover:bg-blue-50 active:scale-[0.98]',
-  danger: 'bg-gradient-to-br from-red-800 to-red-600 text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40 active:scale-[0.98]',
-  success: 'bg-gradient-to-br from-green-600 to-green-500 text-white shadow-lg shadow-green-500/25 active:scale-[0.98]',
-  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 active:scale-[0.98]',
+  primary: 'bg-gradient-to-br from-blue-700 to-blue-500 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-300 focus-visible:outline-none',
+  secondary: 'bg-slate-100 text-slate-700 border-2 border-slate-200 hover:bg-slate-200 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 focus-visible:outline-none',
+  outline: 'bg-transparent border-2 border-blue-500 text-blue-600 hover:bg-blue-50 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 focus-visible:outline-none',
+  danger: 'bg-gradient-to-br from-red-800 to-red-600 text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-300 focus-visible:outline-none',
+  success: 'bg-gradient-to-br from-green-600 to-green-500 text-white shadow-lg shadow-green-500/25 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-300 focus-visible:outline-none',
+  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500 focus-visible:outline-none',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {

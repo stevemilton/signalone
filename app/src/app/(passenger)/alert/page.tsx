@@ -76,6 +76,9 @@ function AlertButton({
       onTouchStart={handleStart}
       onTouchEnd={handleEnd}
       onTouchCancel={handleEnd}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleStart() } }}
+      onKeyUp={(e) => { if (e.key === 'Enter' || e.key === ' ') { handleEnd() } }}
+      onBlur={handleEnd}
       disabled={disabled}
       className={`
         w-full rounded-2xl p-6 text-left transition-transform duration-150 select-none

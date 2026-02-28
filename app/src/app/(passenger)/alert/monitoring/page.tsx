@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAlertStore } from '@/stores/alert-store'
 import { useRealtimeAlert } from '@/hooks/useRealtimeAlert'
@@ -13,8 +13,20 @@ export default function MonitoringPage() {
   const [additionalInfo, setAdditionalInfo] = useState('')
   const [infoSent, setInfoSent] = useState(false)
   const [showSafeDialog, setShowSafeDialog] = useState(false)
+  const cancelBtnRef = useRef<HTMLButtonElement>(null)
 
   const isRed = alertType === 'red'
+
+  // Auto-focus Cancel button and handle Escape when dialog opens
+  useEffect(() => {
+    if (!showSafeDialog) return
+    cancelBtnRef.current?.focus()
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSafeDialog(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showSafeDialog])
 
   const handleSendInfo = useCallback(async () => {
     if (!additionalInfo.trim()) return
@@ -136,14 +148,15 @@ export default function MonitoringPage() {
 
         {/* Confirmation Dialog */}
         {showSafeDialog && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-5">
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-5" role="alertdialog" aria-modal="true" aria-labelledby="monitoring-safe-dialog-title">
             <div className="bg-white rounded-2xl p-6 max-w-sm w-full animate-fade-in">
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Are you sure?</h3>
+              <h3 id="monitoring-safe-dialog-title" className="text-lg font-bold text-slate-900 mb-2">Are you sure?</h3>
               <p className="text-[14px] text-slate-600 mb-6">
                 Are you sure you feel completely safe now? This will close your active alert and end operator monitoring.
               </p>
               <div className="flex gap-3">
                 <Button
+                  ref={cancelBtnRef}
                   fullWidth
                   variant="secondary"
                   onClick={() => setShowSafeDialog(false)}
